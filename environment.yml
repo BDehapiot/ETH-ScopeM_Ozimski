@@ -11,3 +11,4 @@ dependencies:
   - opencv
   - pandas
   - matplotlib-base=3.6
+  - joblib
