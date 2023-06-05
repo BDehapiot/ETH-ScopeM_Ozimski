@@ -15,7 +15,7 @@ tWinSize = 51
 tWinSize = tWinSize // rSize_factor
 tWinSize = tWinSize if tWinSize % 2 != 0 else tWinSize + 1
 minObjects = 65636 // rSize_factor
-minHoles = 1024 // rSize_factor
+minHoles = 512 // rSize_factor
 
 #%% Initialize
 
@@ -68,7 +68,6 @@ gblur = gaussian(C1_rSize + C2_rSize + C3_rSize ,2)
 mask = threshold_niblack(gblur, window_size=tWinSize, k=0.2) > 0.1
 mask = remove_small_objects(mask, min_size=minObjects)
 mask = remove_small_holes(mask, area_threshold=minHoles)
-mask = binary_dilation(mask ^ binary_erosion(mask))
 
 import napari
 viewer = napari.Viewer()
@@ -82,11 +81,18 @@ print(f'  {(end-start):5.3f} s')
 
 #%%
 
+nObjects = 2
 labeled = label(mask)
 props = regionprops(labeled)
 labels = [prop['label'] for prop in props]
 areas = [prop['area'] for prop in props]
-
+areas, labels = zip(*sorted(zip(areas, labels), reverse=True))
+labeled = np.where(np.isin(labeled, labels[0:nObjects]), labeled, 0)
+# mask = binary_dilation(labeled ^ binary_erosion(labeled))
+       
+import napari
+viewer = napari.Viewer()
+viewer.add_image(labeled)
 
 #%%
 
