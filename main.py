@@ -9,12 +9,16 @@ from joblib import Parallel, delayed
 
 #%% Parameters
 
-rSize_factor = 20
-thresh_coeff = 2
+rSize_factor = 6
+
+tWinSize = 51 
+tWinSize = tWinSize // rSize_factor
+tWinSize = tWinSize if tWinSize % 2 != 0 else tWinSize + 1
+minObjects = 65636 // rSize_factor
+minHoles = 1024 // rSize_factor
 
 #%% Initialize
 
-from skimage.filters import threshold_triangle, gaussian
 from skimage.transform import downscale_local_mean
 
 # -----------------------------------------------------------------------------
@@ -49,21 +53,46 @@ print(f'  {(end-start):5.3f} s')
 
 #%%
 
-thresh_coeff = 10
-C1_filt = gaussian(C1_rSize, 2)
-C1_thresh = threshold_triangle(C1_filt)
-C1_mask = C1_filt > (C1_thresh * thresh_coeff)
+from skimage.measure import label, regionprops
+from skimage.morphology import (
+    binary_erosion, binary_dilation, remove_small_objects, remove_small_holes
+    )
+from skimage.filters import (
+    threshold_triangle, threshold_niblack, threshold_sauvola, gaussian
+    )
+
+start = time.time()
+print('Process image')
+
+gblur = gaussian(C1_rSize + C2_rSize + C3_rSize ,2)
+mask = threshold_niblack(gblur, window_size=tWinSize, k=0.2) > 0.1
+mask = remove_small_objects(mask, min_size=minObjects)
+mask = remove_small_holes(mask, area_threshold=minHoles)
+mask = binary_dilation(mask ^ binary_erosion(mask))
 
 import napari
 viewer = napari.Viewer()
-viewer.add_image(C1_rSize)
-viewer.add_image(C1_mask)
+viewer.add_image(C1_rSize, contrast_limits=(0, 40))
+viewer.add_image(C2_rSize, contrast_limits=(0, 40))
+viewer.add_image(C3_rSize, contrast_limits=(0, 255))
+viewer.add_image(mask, blending='additive', colormap='red')
+
+end = time.time()
+print(f'  {(end-start):5.3f} s')
 
 #%%
 
-import napari
-viewer = napari.Viewer()
-viewer.add_image(C1_rSize)
-viewer.add_image(C1_mask)
+labeled = label(mask)
+props = regionprops(labeled)
+labels = [prop['label'] for prop in props]
+areas = [prop['area'] for prop in props]
+
+
+#%%
+
+# import napari
+# viewer = napari.Viewer()
+# viewer.add_image(C1_rSize)
+# viewer.add_image(C1_mask)
 # viewer.add_image(C2_rSize)
 # viewer.add_image(C3_rSize)
