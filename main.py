@@ -14,7 +14,7 @@ thresh_coeff = 2
 
 #%% Initialize
 
-from skimage.filters import threshold_otsu, gaussian
+from skimage.filters import threshold_triangle, gaussian
 from skimage.transform import downscale_local_mean
 
 # -----------------------------------------------------------------------------
@@ -44,11 +44,20 @@ C2_rSize = downscale_local_mean(
 C3_rSize = downscale_local_mean(
     C3_img, (rSize_factor, rSize_factor)).astype('uint8')
 
-C1_thresh = threshold_otsu(gaussian(C1_rSize, 5))
-C1_mask = C1_rSize > C1_thresh * thresh_coeff
-
 end = time.time()
 print(f'  {(end-start):5.3f} s')
+
+#%%
+
+thresh_coeff = 10
+C1_filt = gaussian(C1_rSize, 2)
+C1_thresh = threshold_triangle(C1_filt)
+C1_mask = C1_filt > (C1_thresh * thresh_coeff)
+
+import napari
+viewer = napari.Viewer()
+viewer.add_image(C1_rSize)
+viewer.add_image(C1_mask)
 
 #%%
 
